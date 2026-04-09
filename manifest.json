@@ -14,5 +14,11 @@
       ],
       "js": ["content.js"]
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["analyze.html"],
+      "matches": ["<all_urls>"]
+    }
   ]
 }

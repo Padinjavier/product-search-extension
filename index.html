@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Reportes de Ventas - Soluciones Agromin</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4eac6d, #2d7a4a);
+            color: white;
+            padding: 20px 30px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .drop-zone {
+            border: 3px dashed #4eac6d;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+        }
+        
+        .drop-zone:hover, .drop-zone.dragover {
+            background: #e8f5e9;
+            border-color: #2d7a4a;
+            transform: scale(1.02);
+        }
+        
+        .drop-zone .icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+        
+        .file-info {
+            background: #e8f5e9;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: #4eac6d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: #3d8a57;
+            transform: translateY(-2px);
+        }
+        
+        button.danger {
+            background: #dc3545;
+        }
+        
+        button.danger:hover {
+            background: #c82333;
+        }
+        
+        button.warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .stat-card .label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .chart-card h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        canvas {
+            max-height: 300px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        th {
+            background: #4eac6d;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        tr:hover {
+            background: #e8f5e9;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #4eac6d;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Analizador de Reportes de Ventas</h1>
+            <p>Sistema de análisis para reportes diarios de Soluciones Agromin</p>
+        </div>
+        
+        <div class="content">
+            <div class="drop-zone" id="dropZone">
+                <div class="icon">📂📁</div>
+                <p><strong>Arrastra y suelta tus archivos Excel aquí</strong></p>
+                <p style="font-size: 12px; margin-top: 5px;">o haz clic para seleccionar archivos</p>
+                <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display: none;">
+            </div>
+            
+            <div id="fileInfo" class="file-info" style="display: none;"></div>
+            
+            <div class="controls">
+                <button id="analyzeBtn">🔍 Analizar Archivos</button>
+                <button id="clearBtn" class="danger">🗑️ Limpiar Todo</button>
+                <button id="exportBtn" class="warning">📥 Exportar Reporte (CSV)</button>
+            </div>
+            
+            <div id="stats" class="stats-grid" style="display: none;"></div>
+            
+            <div class="charts-container" id="chartsContainer" style="display: none;">
+                <div class="chart-card">
+                    <h3>📈 Ventas por Día</h3>
+                    <canvas id="ventasChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>💰 Totales por Tipo de Pago</h3>
+                    <canvas id="pagosChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>🏢 Ventas por Empresa</h3>
+                    <canvas id="empresaChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="table-container" id="tableContainer" style="display: none;">
+                <h3>📋 Detalle de Reportes</h3>
+                <div class="progress-bar" id="progressBar" style="display: none;">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="tableWrapper"></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Soluciones Agromin - Sistema de Análisis de Ventas | Los datos se procesan localmente, no se envían a ningún servidor</p>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let archivosCargados = [];
+        let datosAnalizados = [];
+        let ventasChart, pagosChart, empresaChart;
+        
+        // Elementos DOM
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const statsDiv = document.getElementById('stats');
+        const chartsContainer = document.getElementById('chartsContainer');
+        const tableContainer = document.getElementById('tableContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        
+        // ==================== DRAG & DROP ====================
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f => 
+                f.name.endsWith('.xlsx') || f.name.endsWith('.xls')
+            );
+            if (files.length) {
+                archivosCargados = files;
+                actualizarInfoArchivos();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                archivosCargados = Array.from(e.target.files);
+                actualizarInfoArchivos();
+            }
+        });
+        
+        function actualizarInfoArchivos() {
+            fileInfo.style.display = 'block';
+            fileInfo.innerHTML = `
+                <strong>📁 Archivos cargados:</strong> ${archivosCargados.length} archivo(s)
+                <ul style="margin-top: 5px; margin-left: 20px;">
+                    ${archivosCargados.map(f => `<li>${f.name}</li>`).join('')}
+                </ul>
+            `;
+        }
+        
+
+        
+        // ==================== ANALIZAR EXCEL ====================
+        async function analizarArchivo(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const hoja = workbook.Sheets[workbook.SheetNames[0]];
+                        const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: '' });
+                        
+                        const resultado = {
+                            nombre: file.name,
+                            fecha: extraerFecha(filas),
+                            tablas: []
+                        };
+                        
+                        // Buscar las tablas de totales
+                        for (let i = 0; i < filas.length; i++) {
+                            const fila = filas[i];
+                            
+                            // Buscar fila TOTAL (la que tiene los números)
+                            if (fila[0] === 'TOTAL' && fila[5] !== undefined && fila[5] !== '' && !isNaN(parseFloat(fila[5]))) {
+                                let empresa = 'Desconocida';
+                                
+                                // Buscar el nombre de la empresa arriba
+                                for (let j = Math.max(0, i - 15); j < i; j++) {
+                                    if (filas[j] && filas[j][4] === 'Rossana Guisela Villafuerte Garcia') {
+                                        empresa = 'Rossana';
+                                    }
+                                    if (filas[j] && filas[j][4] === 'Soluciones Agromin SRL') {
+                                        empresa = 'Soluciones Agromin';
+                                    }
+                                }
+                                
+                                resultado.tablas.push({
+                                    empresa: empresa,
+                                    CNTD: parseFloat(fila[5]) || 0,
+                                    CRDT: parseFloat(fila[6]) || 0,
+                                    TRSF: parseFloat(fila[7]) || 0,
+                                    CTND: parseFloat(fila[8]) || 0,
+                                    TRSF2: parseFloat(fila[9]) || 0,
+                                    GASTOS: parseFloat(fila[10]) || 0,
+                                    VUELTO: parseFloat(fila[11]) || 0
+                                });
+                            }
+                        }
+                        
+                        resolve(resultado);
+                    } catch (error) {
+                        console.error(`Error analizando ${file.name}:`, error);
+                        resolve(null);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        function extraerFecha(filas) {
+            for (let i = 0; i < Math.min(20, filas.length); i++) {
+                const fila = filas[i];
+                if (fila && fila[2] === 'FECHA :' && fila[3]) {
+                    return fila[3];
+                }
+                if (fila && fila[1] === 'FECHA :' && fila[2]) {
+                    return fila[2];
+                }
+            }
+            return 'Fecha no encontrada';
+        }
+        
+        // ==================== PROCESAR TODO ====================
+        analyzeBtn.addEventListener('click', async () => {
+            if (archivosCargados.length === 0) {
+                alert('⚠️ No hay archivos cargados. Arrastra o selecciona archivos Excel primero.');
+                return;
+            }
+            
+            // Mostrar barra de progreso
+            progressBar.style.display = 'block';
+            datosAnalizados = [];
+            
+            for (let i = 0; i < archivosCargados.length; i++) {
+                progressFill.style.width = `${((i + 1) / archivosCargados.length) * 100}%`;
+                const resultado = await analizarArchivo(archivosCargados[i]);
+                if (resultado && resultado.tablas.length > 0) {
+                    datosAnalizados.push(resultado);
+                }
+            }
+            
+            progressBar.style.display = 'none';
+            
+            if (datosAnalizados.length === 0) {
+                alert('⚠️ No se pudieron extraer datos de los archivos. Verifica que sean reportes válidos.');
+                return;
+            }
+            
+            // Mostrar resultados
+            mostrarEstadisticas();
+            mostrarGraficos();
+            mostrarTabla();
+            
+            statsDiv.style.display = 'grid';
+            chartsContainer.style.display = 'grid';
+            tableContainer.style.display = 'block';
+        });
+        
+        function mostrarEstadisticas() {
+            let totalContado = 0;
+            let totalCredito = 0;
+            let totalTransferencia = 0;
+            let totalGastos = 0;
+            let totalVentas = 0;
+            let ventasRossana = 0;
+            let ventasSoluciones = 0;
+            
+            for (const dato of datosAnalizados) {
+                for (const tabla of dato.tablas) {
+                    totalContado += tabla.CNTD;
+                    totalCredito += tabla.CRDT;
+                    totalTransferencia += tabla.TRSF + tabla.TRSF2;
+                    totalGastos += tabla.GASTOS;
+                    totalVentas += tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                    
+                    if (tabla.empresa === 'Rossana') ventasRossana += tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                    if (tabla.empresa === 'Soluciones Agromin') ventasSoluciones += tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                }
+            }
+            
+            statsDiv.innerHTML = `
+                <div class="stat-card" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <div class="value">S/ ${totalContado.toFixed(2)}</div>
+                    <div class="label">💰 Total Ventas al Contado</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    <div class="value">S/ ${totalCredito.toFixed(2)}</div>
+                    <div class="label">📝 Total Ventas a Crédito</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    <div class="value">S/ ${totalTransferencia.toFixed(2)}</div>
+                    <div class="label">💳 Total Transferencias</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    <div class="value">S/ ${totalVentas.toFixed(2)}</div>
+                    <div class="label">📊 Total General de Ventas</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #a8edea, #fed6e3); color: #333;">
+                    <div class="value">S/ ${totalGastos.toFixed(2)}</div>
+                    <div class="label">💸 Total Gastos</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #d4fc79, #96e6a1); color: #333;">
+                    <div class="value">${datosAnalizados.length}</div>
+                    <div class="label">📅 Días Analizados</div>
+                </div>
+            `;
+        }
+        
+        function mostrarGraficos() {
+            // Datos por día
+            const dias = datosAnalizados.map(d => {
+                const fecha = d.fecha;
+                const total = d.tablas.reduce((sum, t) => sum + t.CNTD + t.CRDT + t.TRSF + t.TRSF2, 0);
+                return { fecha, total };
+            }).sort((a, b) => a.fecha.localeCompare(b.fecha));
+            
+            // Destruir gráficos existentes
+            if (ventasChart) ventasChart.destroy();
+            if (pagosChart) pagosChart.destroy();
+            if (empresaChart) empresaChart.destroy();
+            
+            // Gráfico de ventas por día
+            const ctxVentas = document.getElementById('ventasChart').getContext('2d');
+            ventasChart = new Chart(ctxVentas, {
+                type: 'line',
+                data: {
+                    labels: dias.map(d => d.fecha),
+                    datasets: [{
+                        label: 'Ventas Totales (S/)',
+                        data: dias.map(d => d.total),
+                        borderColor: '#4eac6d',
+                        backgroundColor: 'rgba(78, 172, 109, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { callbacks: { label: (ctx) => `S/ ${ctx.raw.toFixed(2)}` } }
+                    }
+                }
+            });
+            
+            // Gráfico de tipos de pago
+            let totalContado = 0, totalCredito = 0, totalTransferencia = 0;
+            for (const dato of datosAnalizados) {
+                for (const tabla of dato.tablas) {
+                    totalContado += tabla.CNTD;
+                    totalCredito += tabla.CRDT;
+                    totalTransferencia += tabla.TRSF + tabla.TRSF2;
+                }
+            }
+            
+            const ctxPagos = document.getElementById('pagosChart').getContext('2d');
+            pagosChart = new Chart(ctxPagos, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Contado', 'Crédito', 'Transferencia'],
+                    datasets: [{
+                        data: [totalContado, totalCredito, totalTransferencia],
+                        backgroundColor: ['#4eac6d', '#ffc107', '#17a2b8']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+            
+            // Gráfico por empresa
+            let rossanaTotal = 0, solucionesTotal = 0;
+            for (const dato of datosAnalizados) {
+                for (const tabla of dato.tablas) {
+                    const totalTabla = tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                    if (tabla.empresa === 'Rossana') rossanaTotal += totalTabla;
+                    if (tabla.empresa === 'Soluciones Agromin') solucionesTotal += totalTabla;
+                }
+            }
+            
+            const ctxEmpresa = document.getElementById('empresaChart').getContext('2d');
+            empresaChart = new Chart(ctxEmpresa, {
+                type: 'bar',
+                data: {
+                    labels: ['Rossana Villafuerte', 'Soluciones Agromin'],
+                    datasets: [{
+                        label: 'Ventas (S/)',
+                        data: [rossanaTotal, solucionesTotal],
+                        backgroundColor: ['#764ba2', '#4eac6d']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } }
+                }
+            });
+        }
+        
+        function mostrarTabla() {
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Archivo</th>
+                            <th>Empresa</th>
+                            <th>Contado (CNTD)</th>
+                            <th>Crédito (CRDT)</th>
+                            <th>Transferencia (TRSF)</th>
+                            <th>Gastos</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            for (const dato of datosAnalizados) {
+                for (const tabla of dato.tablas) {
+                    const total = tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                    html += `
+                        <tr>
+                            <td>${dato.fecha}</td>
+                            <td>${dato.nombre}</td>
+                            <td>${tabla.empresa}</td>
+                            <td>S/ ${tabla.CNTD.toFixed(2)}</td>
+                            <td>S/ ${tabla.CRDT.toFixed(2)}</td>
+                            <td>S/ ${(tabla.TRSF + tabla.TRSF2).toFixed(2)}</td>
+                            <td>S/ ${tabla.GASTOS.toFixed(2)}</td>
+                            <td><strong>S/ ${total.toFixed(2)}</strong></td>
+                        </tr>
+                    `;
+                }
+            }
+            
+            html += `</tbody></table>`;
+            document.getElementById('tableWrapper').innerHTML = html;
+        }
+        
+        // ==================== EXPORTAR CSV ====================
+        exportBtn.addEventListener('click', () => {
+            if (datosAnalizados.length === 0) {
+                alert('⚠️ No hay datos para exportar. Primero analiza los archivos.');
+                return;
+            }
+            
+            let csv = 'Fecha,Archivo,Empresa,Contado (CNTD),Crédito (CRDT),Transferencia,Gastos,Total\n';
+            
+            for (const dato of datosAnalizados) {
+                for (const tabla of dato.tablas) {
+                    const total = tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                    csv += `"${dato.fecha}","${dato.nombre}","${tabla.empresa}",${tabla.CNTD},${tabla.CRDT},${tabla.TRSF + tabla.TRSF2},${tabla.GASTOS},${total}\n`;
+                }
+            }
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reporte_ventas_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert('✅ Reporte exportado exitosamente');
+        });
+        
+        // ==================== LIMPIAR TODO ====================
+        clearBtn.addEventListener('click', () => {
+            archivosCargados = [];
+            datosAnalizados = [];
+            fileInfo.style.display = 'none';
+            statsDiv.style.display = 'none';
+            chartsContainer.style.display = 'none';
+            tableContainer.style.display = 'none';
+            fileInput.value = '';
+            alert('✅ Todo ha sido limpiado');
+        });
+        
+        console.log('✅ Analizador de Reportes listo. Arrastra tus archivos Excel para comenzar.');
+    </script>
+</body>
+</html>
