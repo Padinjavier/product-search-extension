@@ -6,6 +6,7 @@
     <title>Analizador de Reportes de Ventas - Soluciones Agromin</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -21,7 +22,7 @@
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -66,17 +67,48 @@
             transform: scale(1.02);
         }
         
-        .drop-zone .icon {
-            font-size: 60px;
-            margin-bottom: 10px;
-        }
-        
         .file-info {
             background: #e8f5e9;
             padding: 10px 15px;
             border-radius: 8px;
             margin-bottom: 20px;
             font-size: 14px;
+        }
+        
+        .filters-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filters-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-item label {
+            cursor: pointer;
+        }
+        
+        .filter-item input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
         
         .controls {
@@ -115,6 +147,10 @@
             color: #333;
         }
         
+        button.info {
+            background: #17a2b8;
+        }
+        
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -128,6 +164,12 @@
             padding: 15px;
             border-radius: 10px;
             text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
         }
         
         .stat-card .value {
@@ -143,7 +185,7 @@
         
         .charts-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -152,6 +194,7 @@
             background: #f8f9fa;
             border-radius: 10px;
             padding: 15px;
+            position: relative;
         }
         
         .chart-card h3 {
@@ -160,8 +203,50 @@
             font-size: 16px;
         }
         
+        .chart-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .chart-actions button {
+            background: rgba(0,0,0,0.5);
+            padding: 5px 8px;
+            font-size: 11px;
+        }
+        
         canvas {
             max-height: 300px;
+            width: 100% !important;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+        }
+        
+        .modal-content canvas {
+            max-height: 70vh;
+            width: auto !important;
         }
         
         .table-container {
@@ -219,6 +304,16 @@
             font-size: 12px;
             color: #666;
         }
+        
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            .filter-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -230,7 +325,7 @@
         
         <div class="content">
             <div class="drop-zone" id="dropZone">
-                <div class="icon">📂📁</div>
+                <div style="font-size: 60px;">📂📁</div>
                 <p><strong>Arrastra y suelta tus archivos Excel aquí</strong></p>
                 <p style="font-size: 12px; margin-top: 5px;">o haz clic para seleccionar archivos</p>
                 <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display: none;">
@@ -238,26 +333,87 @@
             
             <div id="fileInfo" class="file-info" style="display: none;"></div>
             
-            <div class="controls">
+            <div class="filters-section" id="filtersSection" style="display: none;">
+                <h3>⚙️ Configurar Totales</h3>
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterContado" checked>
+                        <label for="filterContado">💰 Ventas al Contado (CNTD)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterCredito" checked>
+                        <label for="filterCredito">📝 Ventas a Crédito (CRDT)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterTransferencia" checked>
+                        <label for="filterTransferencia">💳 Transferencias (TRSF)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterCancelacionContado" checked>
+                        <label for="filterCancelacionContado">🔄 Cancelación Contado (CTND)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterCancelacionTransferencia" checked>
+                        <label for="filterCancelacionTransferencia">🔄 Cancelación Transferencia (TRSF2)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterGastos">
+                        <label for="filterGastos">💸 Gastos</label>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterSoluciones" checked>
+                        <label for="filterSoluciones">🏢 Soluciones Agromin SRL</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="filterRossana" checked>
+                        <label for="filterRossana">👤 Villafuerte</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls" id="controlsSection" style="display: none;">
                 <button id="analyzeBtn">🔍 Analizar Archivos</button>
-                <button id="clearBtn" class="danger">🗑️ Limpiar Todo</button>
+                <button id="refreshBtn">🔄 Actualizar Totales</button>
                 <button id="exportBtn" class="warning">📥 Exportar Reporte (CSV)</button>
+                <button id="clearBtn" class="danger">🗑️ Limpiar Todo</button>
             </div>
             
             <div id="stats" class="stats-grid" style="display: none;"></div>
             
             <div class="charts-container" id="chartsContainer" style="display: none;">
                 <div class="chart-card">
+                    <div class="chart-actions">
+                        <button class="expandChartBtn" data-chart="ventasChart">🔍</button>
+                        <button class="exportChartBtn" data-chart="ventasChart">📸</button>
+                    </div>
                     <h3>📈 Ventas por Día</h3>
                     <canvas id="ventasChart"></canvas>
                 </div>
                 <div class="chart-card">
-                    <h3>💰 Totales por Tipo de Pago</h3>
+                    <div class="chart-actions">
+                        <button class="expandChartBtn" data-chart="pagosChart">🔍</button>
+                        <button class="exportChartBtn" data-chart="pagosChart">📸</button>
+                    </div>
+                    <h3>💰 Distribución por Tipo de Pago</h3>
                     <canvas id="pagosChart"></canvas>
                 </div>
                 <div class="chart-card">
+                    <div class="chart-actions">
+                        <button class="expandChartBtn" data-chart="empresaChart">🔍</button>
+                        <button class="exportChartBtn" data-chart="empresaChart">📸</button>
+                    </div>
                     <h3>🏢 Ventas por Empresa</h3>
                     <canvas id="empresaChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-actions">
+                        <button class="expandChartBtn" data-chart="tendenciaChart">🔍</button>
+                        <button class="exportChartBtn" data-chart="tendenciaChart">📸</button>
+                    </div>
+                    <h3>📊 Tendencia Acumulada</h3>
+                    <canvas id="tendenciaChart"></canvas>
                 </div>
             </div>
             
@@ -271,7 +427,18 @@
         </div>
         
         <div class="footer">
-            <p>Soluciones Agromin - Sistema de Análisis de Ventas | Los datos se procesan localmente, no se envían a ningún servidor</p>
+            <p>Soluciones Agromin - Sistema de Análisis de Ventas | Los datos se procesan localmente</p>
+        </div>
+    </div>
+    
+    <!-- Modal para gráficos expandidos -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button id="closeModalBtn" style="background: #dc3545; padding: 5px 10px;">✕ Cerrar</button>
+                <button id="downloadModalBtn" style="background: #4eac6d; padding: 5px 10px;">📸 Descargar Imagen</button>
+            </div>
+            <canvas id="modalCanvas"></canvas>
         </div>
     </div>
 
@@ -279,20 +446,28 @@
         // Variables globales
         let archivosCargados = [];
         let datosAnalizados = [];
-        let ventasChart, pagosChart, empresaChart;
+        let ventasChart, pagosChart, empresaChart, tendenciaChart;
         
         // Elementos DOM
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const fileInfo = document.getElementById('fileInfo');
         const analyzeBtn = document.getElementById('analyzeBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
         const clearBtn = document.getElementById('clearBtn');
         const exportBtn = document.getElementById('exportBtn');
         const statsDiv = document.getElementById('stats');
+        const filtersSection = document.getElementById('filtersSection');
+        const controlsSection = document.getElementById('controlsSection');
         const chartsContainer = document.getElementById('chartsContainer');
         const tableContainer = document.getElementById('tableContainer');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
+        
+        // Modal
+        const modal = document.getElementById('modal');
+        const modalCanvas = document.getElementById('modalCanvas');
+        let currentChartImage = null;
         
         // ==================== DRAG & DROP ====================
         dropZone.addEventListener('click', () => fileInput.click());
@@ -315,6 +490,8 @@
             if (files.length) {
                 archivosCargados = files;
                 actualizarInfoArchivos();
+                filtersSection.style.display = 'block';
+                controlsSection.style.display = 'block';
             }
         });
         
@@ -322,6 +499,8 @@
             if (e.target.files.length) {
                 archivosCargados = Array.from(e.target.files);
                 actualizarInfoArchivos();
+                filtersSection.style.display = 'block';
+                controlsSection.style.display = 'block';
             }
         });
         
@@ -329,59 +508,95 @@
             fileInfo.style.display = 'block';
             fileInfo.innerHTML = `
                 <strong>📁 Archivos cargados:</strong> ${archivosCargados.length} archivo(s)
-                <ul style="margin-top: 5px; margin-left: 20px;">
+                <ul style="margin-top: 5px; margin-left: 20px; max-height: 100px; overflow-y: auto;">
                     ${archivosCargados.map(f => `<li>${f.name}</li>`).join('')}
                 </ul>
             `;
         }
         
-
-        
         // ==================== ANALIZAR EXCEL ====================
         async function analizarArchivo(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const hoja = workbook.Sheets[workbook.SheetNames[0]];
-                        const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: '' });
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const hoja = workbook.Sheets[workbook.SheetNames[0]];
+                const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: '' });
+                
+                // ====== AGREGAR ESTAS 4 LÍNEAS ======
+                // Versión con respaldo (busca en nombre, si no encuentra, busca dentro del Excel)
+                let fecha = 'Fecha no encontrada';
+                const fechaPattern = /(\d{4}-\d{2}-\d{2})/;
+                const match = file.name.match(fechaPattern);
+                if (match) {
+                    fecha = match[1];
+                } else {
+                    // Respaldo: buscar dentro del Excel
+                    if (filas[3] && filas[3][2] === 'FECHA :' && filas[3][3]) {
+                        fecha = filas[3][3];
+                    } else if (filas[4] && filas[4][2] === 'FECHA :' && filas[4][3]) {
+                        fecha = filas[4][3];
+                    }
+                }
+                // ====================================
+                
+                const resultado = {
+                    nombre: file.name,
+                    fecha: fecha,
+                    tablas: []
+                };
+                
                         
-                        const resultado = {
-                            nombre: file.name,
-                            fecha: extraerFecha(filas),
-                            tablas: []
-                        };
+                        // Buscar la primera tabla (Soluciones Agromin SRL) - Buscar por texto exacto
+                        let primeraTablaEncontrada = false;
+                        let segundaTablaEncontrada = false;
                         
-                        // Buscar las tablas de totales
                         for (let i = 0; i < filas.length; i++) {
                             const fila = filas[i];
                             
-                            // Buscar fila TOTAL (la que tiene los números)
-                            if (fila[0] === 'TOTAL' && fila[5] !== undefined && fila[5] !== '' && !isNaN(parseFloat(fila[5]))) {
-                                let empresa = 'Desconocida';
-                                
-                                // Buscar el nombre de la empresa arriba
-                                for (let j = Math.max(0, i - 15); j < i; j++) {
-                                    if (filas[j] && filas[j][4] === 'Rossana Guisela Villafuerte Garcia') {
-                                        empresa = 'Rossana';
-                                    }
-                                    if (filas[j] && filas[j][4] === 'Soluciones Agromin SRL') {
-                                        empresa = 'Soluciones Agromin';
+                            // Buscar "Soluciones Agromin SRL" en cualquier columna
+                            if (!primeraTablaEncontrada && fila && fila.some(cell => cell === 'Soluciones Agromin SRL')) {
+                                primeraTablaEncontrada = true;
+                                // Buscar la fila TOTAL después de esta empresa
+                                for (let j = i + 1; j < Math.min(i + 50, filas.length); j++) {
+                                    const filaTotal = filas[j];
+                                    if (filaTotal && filaTotal[0] === 'TOTAL' && filaTotal[5] !== undefined && !isNaN(parseFloat(filaTotal[5]))) {
+                                        resultado.tablas.push({
+                                            empresa: 'Soluciones Agromin SRL',
+                                            CNTD: parseFloat(filaTotal[5]) || 0,
+                                            CRDT: parseFloat(filaTotal[6]) || 0,
+                                            TRSF: parseFloat(filaTotal[7]) || 0,
+                                            CTND: parseFloat(filaTotal[8]) || 0,
+                                            TRSF2: parseFloat(filaTotal[9]) || 0,
+                                            GASTOS: parseFloat(filaTotal[10]) || 0,
+                                            VUELTO: parseFloat(filaTotal[11]) || 0
+                                        });
+                                        break;
                                     }
                                 }
-                                
-                                resultado.tablas.push({
-                                    empresa: empresa,
-                                    CNTD: parseFloat(fila[5]) || 0,
-                                    CRDT: parseFloat(fila[6]) || 0,
-                                    TRSF: parseFloat(fila[7]) || 0,
-                                    CTND: parseFloat(fila[8]) || 0,
-                                    TRSF2: parseFloat(fila[9]) || 0,
-                                    GASTOS: parseFloat(fila[10]) || 0,
-                                    VUELTO: parseFloat(fila[11]) || 0
-                                });
+                            }
+                            
+                            // Buscar "Rossana Guisela Villafuerte Garcia"
+                            if (!segundaTablaEncontrada && fila && fila.some(cell => cell === 'Rossana Guisela Villafuerte Garcia')) {
+                                segundaTablaEncontrada = true;
+                                for (let j = i + 1; j < Math.min(i + 50, filas.length); j++) {
+                                    const filaTotal = filas[j];
+                                    if (filaTotal && filaTotal[0] === 'TOTAL' && filaTotal[5] !== undefined && !isNaN(parseFloat(filaTotal[5]))) {
+                                        resultado.tablas.push({
+                                            empresa: 'Rossana Guisela Villafuerte Garcia',
+                                            CNTD: parseFloat(filaTotal[5]) || 0,
+                                            CRDT: parseFloat(filaTotal[6]) || 0,
+                                            TRSF: parseFloat(filaTotal[7]) || 0,
+                                            CTND: parseFloat(filaTotal[8]) || 0,
+                                            TRSF2: parseFloat(filaTotal[9]) || 0,
+                                            GASTOS: parseFloat(filaTotal[10]) || 0,
+                                            VUELTO: parseFloat(filaTotal[11]) || 0
+                                        });
+                                        break;
+                                    }
+                                }
                             }
                         }
                         
@@ -395,27 +610,13 @@
             });
         }
         
-        function extraerFecha(filas) {
-            for (let i = 0; i < Math.min(20, filas.length); i++) {
-                const fila = filas[i];
-                if (fila && fila[2] === 'FECHA :' && fila[3]) {
-                    return fila[3];
-                }
-                if (fila && fila[1] === 'FECHA :' && fila[2]) {
-                    return fila[2];
-                }
-            }
-            return 'Fecha no encontrada';
-        }
-        
         // ==================== PROCESAR TODO ====================
         analyzeBtn.addEventListener('click', async () => {
             if (archivosCargados.length === 0) {
-                alert('⚠️ No hay archivos cargados. Arrastra o selecciona archivos Excel primero.');
+                alert('⚠️ No hay archivos cargados.');
                 return;
             }
             
-            // Mostrar barra de progreso
             progressBar.style.display = 'block';
             datosAnalizados = [];
             
@@ -430,11 +631,20 @@
             progressBar.style.display = 'none';
             
             if (datosAnalizados.length === 0) {
-                alert('⚠️ No se pudieron extraer datos de los archivos. Verifica que sean reportes válidos.');
+                alert('⚠️ No se pudieron extraer datos. Verifica los archivos.');
                 return;
             }
             
-            // Mostrar resultados
+            mostrarTodo();
+        });
+        
+        refreshBtn.addEventListener('click', () => {
+            if (datosAnalizados.length > 0) {
+                mostrarTodo();
+            }
+        });
+        
+        function mostrarTodo() {
             mostrarEstadisticas();
             mostrarGraficos();
             mostrarTabla();
@@ -442,52 +652,93 @@
             statsDiv.style.display = 'grid';
             chartsContainer.style.display = 'grid';
             tableContainer.style.display = 'block';
-        });
+        }
+        
+        function obtenerFiltros() {
+            return {
+                contado: document.getElementById('filterContado').checked,
+                credito: document.getElementById('filterCredito').checked,
+                transferencia: document.getElementById('filterTransferencia').checked,
+                cancelacionContado: document.getElementById('filterCancelacionContado').checked,
+                cancelacionTransferencia: document.getElementById('filterCancelacionTransferencia').checked,
+                gastos: document.getElementById('filterGastos').checked,
+                soluciones: document.getElementById('filterSoluciones').checked,
+                rossana: document.getElementById('filterRossana').checked
+            };
+        }
+        
+        function calcularTotalPorFiltro(tabla, filtros) {
+            let total = 0;
+            if (filtros.contado) total += tabla.CNTD;
+            if (filtros.credito) total += tabla.CRDT;
+            if (filtros.transferencia) total += tabla.TRSF;
+            if (filtros.cancelacionContado) total += tabla.CTND;
+            if (filtros.cancelacionTransferencia) total += tabla.TRSF2;
+            if (filtros.gastos) total += tabla.GASTOS;
+            return total;
+        }
         
         function mostrarEstadisticas() {
+            const filtros = obtenerFiltros();
+            
+            let totalGeneral = 0;
             let totalContado = 0;
             let totalCredito = 0;
             let totalTransferencia = 0;
+            let totalCancelaciones = 0;
             let totalGastos = 0;
-            let totalVentas = 0;
-            let ventasRossana = 0;
-            let ventasSoluciones = 0;
+            let totalSoluciones = 0;
+            let totalRossana = 0;
             
             for (const dato of datosAnalizados) {
                 for (const tabla of dato.tablas) {
+                    const totalTabla = calcularTotalPorFiltro(tabla, filtros);
+                    totalGeneral += totalTabla;
                     totalContado += tabla.CNTD;
                     totalCredito += tabla.CRDT;
                     totalTransferencia += tabla.TRSF + tabla.TRSF2;
+                    totalCancelaciones += tabla.CTND + tabla.TRSF2;
                     totalGastos += tabla.GASTOS;
-                    totalVentas += tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
                     
-                    if (tabla.empresa === 'Rossana') ventasRossana += tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
-                    if (tabla.empresa === 'Soluciones Agromin') ventasSoluciones += tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                    if (tabla.empresa === 'Soluciones Agromin SRL') totalSoluciones += totalTabla;
+                    if (tabla.empresa === 'Rossana Guisela Villafuerte Garcia') totalRossana += totalTabla;
                 }
             }
             
             statsDiv.innerHTML = `
                 <div class="stat-card" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <div class="value">S/ ${totalGeneral.toFixed(2)}</div>
+                    <div class="label">💰 TOTAL GENERAL (según filtros)</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #4eac6d, #2d7a4a);">
                     <div class="value">S/ ${totalContado.toFixed(2)}</div>
-                    <div class="label">💰 Total Ventas al Contado</div>
+                    <div class="label">💵 Ventas al Contado</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                <div class="stat-card" style="background: linear-gradient(135deg, #ffc107, #e0a800); color: #333;">
                     <div class="value">S/ ${totalCredito.toFixed(2)}</div>
-                    <div class="label">📝 Total Ventas a Crédito</div>
+                    <div class="label">📝 Ventas a Crédito</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                <div class="stat-card" style="background: linear-gradient(135deg, #17a2b8, #138496);">
                     <div class="value">S/ ${totalTransferencia.toFixed(2)}</div>
-                    <div class="label">💳 Total Transferencias</div>
+                    <div class="label">💳 Transferencias</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #fa709a, #fee140);">
-                    <div class="value">S/ ${totalVentas.toFixed(2)}</div>
-                    <div class="label">📊 Total General de Ventas</div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #fd7e14, #e06a00);">
+                    <div class="value">S/ ${totalCancelaciones.toFixed(2)}</div>
+                    <div class="label">🔄 Cancelaciones</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #a8edea, #fed6e3); color: #333;">
+                <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #b02a37);">
                     <div class="value">S/ ${totalGastos.toFixed(2)}</div>
-                    <div class="label">💸 Total Gastos</div>
+                    <div class="label">💸 Gastos</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #d4fc79, #96e6a1); color: #333;">
+                <div class="stat-card" style="background: linear-gradient(135deg, #20c997, #1aa179);">
+                    <div class="value">S/ ${totalSoluciones.toFixed(2)}</div>
+                    <div class="label">🏢 Soluciones Agromin</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #6f42c1, #553098);">
+                    <div class="value">S/ ${totalRossana.toFixed(2)}</div>
+                    <div class="label">👤 Villafuerte</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #e83e8c, #c8236c);">
                     <div class="value">${datosAnalizados.length}</div>
                     <div class="label">📅 Días Analizados</div>
                 </div>
@@ -495,17 +746,55 @@
         }
         
         function mostrarGraficos() {
+            const filtros = obtenerFiltros();
+            
             // Datos por día
             const dias = datosAnalizados.map(d => {
-                const fecha = d.fecha;
-                const total = d.tablas.reduce((sum, t) => sum + t.CNTD + t.CRDT + t.TRSF + t.TRSF2, 0);
-                return { fecha, total };
+                const total = d.tablas.reduce((sum, t) => {
+                    if ((filtros.soluciones && t.empresa === 'Soluciones Agromin SRL') ||
+                        (filtros.rossana && t.empresa === 'Rossana Guisela Villafuerte Garcia')) {
+                        return sum + calcularTotalPorFiltro(t, filtros);
+                    }
+                    return sum;
+                }, 0);
+                return { fecha: d.fecha, total };
             }).sort((a, b) => a.fecha.localeCompare(b.fecha));
+            
+            // Totales por tipo
+            let totalContado = 0, totalCredito = 0, totalTransferencia = 0;
+            for (const dato of datosAnalizados) {
+                for (const tabla of dato.tablas) {
+                    if ((filtros.soluciones && tabla.empresa === 'Soluciones Agromin SRL') ||
+                        (filtros.rossana && tabla.empresa === 'Rossana Guisela Villafuerte Garcia')) {
+                        totalContado += tabla.CNTD;
+                        totalCredito += tabla.CRDT;
+                        totalTransferencia += tabla.TRSF + tabla.TRSF2;
+                    }
+                }
+            }
+            
+            // Totales por empresa
+            let solucionesTotal = 0, rossanaTotal = 0;
+            for (const dato of datosAnalizados) {
+                for (const tabla of dato.tablas) {
+                    const totalTabla = calcularTotalPorFiltro(tabla, filtros);
+                    if (tabla.empresa === 'Soluciones Agromin SRL') solucionesTotal += totalTabla;
+                    if (tabla.empresa === 'Rossana Guisela Villafuerte Garcia') rossanaTotal += totalTabla;
+                }
+            }
+            
+            // Tendencia acumulada
+            let acumulado = 0;
+            const tendencia = dias.map(d => {
+                acumulado += d.total;
+                return { fecha: d.fecha, acumulado };
+            });
             
             // Destruir gráficos existentes
             if (ventasChart) ventasChart.destroy();
             if (pagosChart) pagosChart.destroy();
             if (empresaChart) empresaChart.destroy();
+            if (tendenciaChart) tendenciaChart.destroy();
             
             // Gráfico de ventas por día
             const ctxVentas = document.getElementById('ventasChart').getContext('2d');
@@ -526,22 +815,12 @@
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
-                        legend: { position: 'top' },
                         tooltip: { callbacks: { label: (ctx) => `S/ ${ctx.raw.toFixed(2)}` } }
                     }
                 }
             });
             
             // Gráfico de tipos de pago
-            let totalContado = 0, totalCredito = 0, totalTransferencia = 0;
-            for (const dato of datosAnalizados) {
-                for (const tabla of dato.tablas) {
-                    totalContado += tabla.CNTD;
-                    totalCredito += tabla.CRDT;
-                    totalTransferencia += tabla.TRSF + tabla.TRSF2;
-                }
-            }
-            
             const ctxPagos = document.getElementById('pagosChart').getContext('2d');
             pagosChart = new Chart(ctxPagos, {
                 type: 'doughnut',
@@ -552,41 +831,51 @@
                         backgroundColor: ['#4eac6d', '#ffc107', '#17a2b8']
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'bottom' } }
-                }
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
             
             // Gráfico por empresa
-            let rossanaTotal = 0, solucionesTotal = 0;
-            for (const dato of datosAnalizados) {
-                for (const tabla of dato.tablas) {
-                    const totalTabla = tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
-                    if (tabla.empresa === 'Rossana') rossanaTotal += totalTabla;
-                    if (tabla.empresa === 'Soluciones Agromin') solucionesTotal += totalTabla;
-                }
-            }
-            
             const ctxEmpresa = document.getElementById('empresaChart').getContext('2d');
             empresaChart = new Chart(ctxEmpresa, {
                 type: 'bar',
                 data: {
-                    labels: ['Rossana Villafuerte', 'Soluciones Agromin'],
+                    labels: ['Soluciones Agromin', 'Rossana Villafuerte'],
                     datasets: [{
                         label: 'Ventas (S/)',
-                        data: [rossanaTotal, solucionesTotal],
-                        backgroundColor: ['#764ba2', '#4eac6d']
+                        data: [solucionesTotal, rossanaTotal],
+                        backgroundColor: ['#4eac6d', '#764ba2']
+                    }]
+                },
+                options: { responsive: true }
+            });
+            
+            // Gráfico de tendencia acumulada
+            const ctxTendencia = document.getElementById('tendenciaChart').getContext('2d');
+            tendenciaChart = new Chart(ctxTendencia, {
+                type: 'line',
+                data: {
+                    labels: tendencia.map(t => t.fecha),
+                    datasets: [{
+                        label: 'Ventas Acumuladas (S/)',
+                        data: tendencia.map(t => t.acumulado),
+                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        tension: 0.4,
+                        fill: true
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'top' } }
+                    plugins: {
+                        tooltip: { callbacks: { label: (ctx) => `S/ ${ctx.raw.toFixed(2)}` } }
+                    }
                 }
             });
         }
         
         function mostrarTabla() {
+            const filtros = obtenerFiltros();
+            
             let html = `
                 <table>
                     <thead>
@@ -594,11 +883,13 @@
                             <th>Fecha</th>
                             <th>Archivo</th>
                             <th>Empresa</th>
-                            <th>Contado (CNTD)</th>
-                            <th>Crédito (CRDT)</th>
-                            <th>Transferencia (TRSF)</th>
+                            <th>Contado</th>
+                            <th>Crédito</th>
+                            <th>Transferencia</th>
+                            <th>Cancelación Contado</th>
+                            <th>Cancelación Transferencia</th>
                             <th>Gastos</th>
-                            <th>Total</th>
+                            <th>Total (con filtros)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -606,15 +897,17 @@
             
             for (const dato of datosAnalizados) {
                 for (const tabla of dato.tablas) {
-                    const total = tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
+                    const total = calcularTotalPorFiltro(tabla, filtros);
                     html += `
                         <tr>
                             <td>${dato.fecha}</td>
                             <td>${dato.nombre}</td>
-                            <td>${tabla.empresa}</td>
+                            <td>${tabla.empresa === 'Soluciones Agromin SRL' ? '🏢 Soluciones' : '👤 Villafuerte'}</td>
                             <td>S/ ${tabla.CNTD.toFixed(2)}</td>
                             <td>S/ ${tabla.CRDT.toFixed(2)}</td>
-                            <td>S/ ${(tabla.TRSF + tabla.TRSF2).toFixed(2)}</td>
+                            <td>S/ ${tabla.TRSF.toFixed(2)}</td>
+                            <td>S/ ${tabla.CTND.toFixed(2)}</td>
+                            <td>S/ ${tabla.TRSF2.toFixed(2)}</td>
                             <td>S/ ${tabla.GASTOS.toFixed(2)}</td>
                             <td><strong>S/ ${total.toFixed(2)}</strong></td>
                         </tr>
@@ -629,16 +922,17 @@
         // ==================== EXPORTAR CSV ====================
         exportBtn.addEventListener('click', () => {
             if (datosAnalizados.length === 0) {
-                alert('⚠️ No hay datos para exportar. Primero analiza los archivos.');
+                alert('⚠️ No hay datos para exportar.');
                 return;
             }
             
-            let csv = 'Fecha,Archivo,Empresa,Contado (CNTD),Crédito (CRDT),Transferencia,Gastos,Total\n';
+            const filtros = obtenerFiltros();
+            let csv = 'Fecha,Archivo,Empresa,Contado,Crédito,Transferencia,Cancelación Contado,Cancelación Transferencia,Gastos,Total\n';
             
             for (const dato of datosAnalizados) {
                 for (const tabla of dato.tablas) {
-                    const total = tabla.CNTD + tabla.CRDT + tabla.TRSF + tabla.TRSF2;
-                    csv += `"${dato.fecha}","${dato.nombre}","${tabla.empresa}",${tabla.CNTD},${tabla.CRDT},${tabla.TRSF + tabla.TRSF2},${tabla.GASTOS},${total}\n`;
+                    const total = calcularTotalPorFiltro(tabla, filtros);
+                    csv += `"${dato.fecha}","${dato.nombre}","${tabla.empresa}",${tabla.CNTD},${tabla.CRDT},${tabla.TRSF},${tabla.CTND},${tabla.TRSF2},${tabla.GASTOS},${total}\n`;
                 }
             }
             
@@ -650,7 +944,62 @@
             a.click();
             URL.revokeObjectURL(url);
             
-            alert('✅ Reporte exportado exitosamente');
+            alert('✅ Reporte exportado');
+        });
+        
+        // ==================== GRÁFICOS EXPANDIDOS ====================
+        function setupChartButtons() {
+            document.querySelectorAll('.expandChartBtn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const chartId = btn.getAttribute('data-chart');
+                    const originalCanvas = document.getElementById(chartId);
+                    const modalCanvas = document.getElementById('modalCanvas');
+                    
+                    // Copiar el gráfico al modal
+                    modalCanvas.width = originalCanvas.width;
+                    modalCanvas.height = originalCanvas.height;
+                    const ctx = modalCanvas.getContext('2d');
+                    
+                    // Obtener la imagen del canvas original
+                    const image = originalCanvas.toDataURL('image/png');
+                    const img = new Image();
+                    img.onload = () => {
+                        modalCanvas.width = img.width;
+                        modalCanvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = image;
+                    
+                    modal.style.display = 'flex';
+                });
+            });
+            
+            document.querySelectorAll('.exportChartBtn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const chartId = btn.getAttribute('data-chart');
+                    const canvas = document.getElementById(chartId);
+                    const link = document.createElement('a');
+                    link.download = `${chartId}_${new Date().toISOString().split('T')[0]}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            });
+        }
+        
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        document.getElementById('downloadModalBtn').addEventListener('click', () => {
+            const canvas = document.getElementById('modalCanvas');
+            const link = document.createElement('a');
+            link.download = `grafico_${new Date().toISOString().split('T')[0]}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.style.display = 'none';
         });
         
         // ==================== LIMPIAR TODO ====================
@@ -658,14 +1007,18 @@
             archivosCargados = [];
             datosAnalizados = [];
             fileInfo.style.display = 'none';
+            filtersSection.style.display = 'none';
+            controlsSection.style.display = 'none';
             statsDiv.style.display = 'none';
             chartsContainer.style.display = 'none';
             tableContainer.style.display = 'none';
             fileInput.value = '';
-            alert('✅ Todo ha sido limpiado');
+            alert('✅ Todo limpiado');
         });
         
-        console.log('✅ Analizador de Reportes listo. Arrastra tus archivos Excel para comenzar.');
+        // Inicializar
+        setTimeout(setupChartButtons, 500);
+        console.log('✅ Analizador listo. Arrastra tus archivos Excel.');
     </script>
 </body>
 </html>

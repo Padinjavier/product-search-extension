@@ -572,13 +572,10 @@ initSearchListener();
 
  // ==================== OPCIÓN 2: ANALIZAR EXCEL ====================
     document.getElementById("analyzeExcelLink")
-        .addEventListener("click", function (e) {
-            e.preventDefault();
-
-            chrome.tabs.create({
-                url: chrome.runtime.getURL("analyze.html")
-            });
-        });
+    .addEventListener("click", function (e) {
+        e.preventDefault();
+        window.open("https://padinjavier.github.io/product-search-extension/", "_blank");
+    });
     
     console.log('✅ Herramienta cargada. Haz clic en el engranaje ⚙️ en la esquina inferior derecha.');
 })();
