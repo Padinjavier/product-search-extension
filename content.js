@@ -122,22 +122,20 @@ initSearchListener();
 
 // funcion para redimensionar la tabla de productos (inicio)
 (function() {
-    // Buscar la columna derecha (div 3)
+    const currentPath = window.location.pathname;
     const rightColumn = document.querySelector('.row .col-lg-3');
     const leftColumn = document.querySelector('.row .col-lg-9');
-    
+
+    // Solo mostrar error si estamos en Home/index y no existe la columna
     if (!rightColumn) {
-        console.error('No se encontró la columna derecha');
+        if (currentPath === '/Home/index') {
+            console.error('No se encontró la columna derecha en Home/index');
+        }
         return;
     }
-    
-    // Verificar si ya existe el botón
-    if (document.getElementById('toggleColumnBtn')) {
-        console.log('El botón ya existe');
-        return;
-    }
-    
-    // Crear el botón flotante
+
+    if (document.getElementById('toggleColumnBtn')) return;
+
     const toggleBtn = document.createElement('button');
     toggleBtn.id = 'toggleColumnBtn';
     toggleBtn.innerHTML = '◀ Ocultar';
@@ -161,8 +159,7 @@ initSearchListener();
         text-orientation: mixed;
         letter-spacing: 2px;
     `;
-    
-    // Efecto hover
+
     toggleBtn.addEventListener('mouseenter', () => {
         toggleBtn.style.backgroundColor = '#3d8a57';
         toggleBtn.style.padding = '14px 8px';
@@ -171,39 +168,29 @@ initSearchListener();
         toggleBtn.style.backgroundColor = '#4eac6d';
         toggleBtn.style.padding = '12px 8px';
     });
-    
-    // Estado de la columna
+
     let isHidden = false;
-    
-    // Función para ocultar/mostrar
+
     toggleBtn.addEventListener('click', () => {
         if (!isHidden) {
-            // Ocultar columna
             rightColumn.style.display = 'none';
             toggleBtn.innerHTML = '▶ Mostrar';
             toggleBtn.style.right = '0';
             toggleBtn.style.borderRadius = '8px 0 0 8px';
             isHidden = true;
-            leftColumn.style.width = '100%';
-            console.log('✅ Columna derecha ocultada');
+            if (leftColumn) leftColumn.style.width = '100%';
         } else {
-            // Mostrar columna
             rightColumn.style.display = '';
             toggleBtn.innerHTML = '◀ Ocultar';
             toggleBtn.style.right = '20px';
             toggleBtn.style.borderRadius = '8px 0 0 8px';
             isHidden = false;
-            console.log('✅ Columna derecha visible');
-            leftColumn.style.width = '75%';
+            if (leftColumn) leftColumn.style.width = '75%';
         }
     });
-    
-    // Agregar el botón al body
-    document.body.appendChild(toggleBtn);
-    
-    console.log('✅ Botón flotante agregado. Haz clic para ocultar/mostrar la columna derecha');
-})();
 
+    document.body.appendChild(toggleBtn);
+})();
 // funcion para redimensionar la tabla de productos (fin)
 
 
@@ -574,7 +561,7 @@ initSearchListener();
     document.getElementById("analyzeExcelLink")
     .addEventListener("click", function (e) {
         e.preventDefault();
-        window.open("https://padinjavier.github.io/product-search-extension/", "_blank");
+        window.open("https://product-search-extension.netlify.app/", "_blank");
     });
     
     console.log('✅ Herramienta cargada. Haz clic en el engranaje ⚙️ en la esquina inferior derecha.');
