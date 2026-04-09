@@ -377,7 +377,8 @@
                 <button id="analyzeBtn">🔍 Analizar Archivos</button>
                 <button id="refreshBtn">🔄 Actualizar Totales</button>
                 <button id="exportBtn" class="warning">📥 Exportar Reporte (CSV)</button>
-                <button id="clearBtn" class="danger">🗑️ Limpiar Todo</button>
+                <button id="clearBtn" class="danger">�️ Limpiar Todo</button>
+                <button id="exportFullImageBtn" class="info">🖼️ Capturar Todo</button>
             </div>
             
             <div id="stats" class="stats-grid" style="display: none;"></div>
@@ -873,52 +874,155 @@
             });
         }
         
-        function mostrarTabla() {
-            const filtros = obtenerFiltros();
+     function mostrarTabla() {
+    const filtros = obtenerFiltros();
+    
+    // Recolectar datos en un array
+    let datosTabla = [];
+    
+    for (const dato of datosAnalizados) {
+        for (const tabla of dato.tablas) {
+            const total = calcularTotalPorFiltro(tabla, filtros);
+            datosTabla.push({
+                fecha: dato.fecha,
+                archivo: dato.nombre,
+                empresa: tabla.empresa === 'Soluciones Agromin SRL' ? '🏢 Soluciones' : '👤 Villafuerte',
+                contado: tabla.CNTD,
+                credito: tabla.CRDT,
+                transferencia: tabla.TRSF,
+                cancelacionContado: tabla.CTND,
+                cancelacionTransferencia: tabla.TRSF2,
+                gastos: tabla.GASTOS,
+                total: total
+            });
+        }
+    }
+    
+    // Estado de ordenamiento
+    let sortColumn = 'fecha';
+    let sortDirection = 'asc'; // 'asc' o 'desc'
+    
+    // Función para ordenar
+    function ordenarDatos(columna, direction) {
+        datosTabla.sort((a, b) => {
+            let valA = a[columna];
+            let valB = b[columna];
             
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Archivo</th>
-                            <th>Empresa</th>
-                            <th>Contado</th>
-                            <th>Crédito</th>
-                            <th>Transferencia</th>
-                            <th>Cancelación Contado</th>
-                            <th>Cancelación Transferencia</th>
-                            <th>Gastos</th>
-                            <th>Total (con filtros)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            for (const dato of datosAnalizados) {
-                for (const tabla of dato.tablas) {
-                    const total = calcularTotalPorFiltro(tabla, filtros);
-                    html += `
-                        <tr>
-                            <td>${dato.fecha}</td>
-                            <td>${dato.nombre}</td>
-                            <td>${tabla.empresa === 'Soluciones Agromin SRL' ? '🏢 Soluciones' : '👤 Villafuerte'}</td>
-                            <td>S/ ${tabla.CNTD.toFixed(2)}</td>
-                            <td>S/ ${tabla.CRDT.toFixed(2)}</td>
-                            <td>S/ ${tabla.TRSF.toFixed(2)}</td>
-                            <td>S/ ${tabla.CTND.toFixed(2)}</td>
-                            <td>S/ ${tabla.TRSF2.toFixed(2)}</td>
-                            <td>S/ ${tabla.GASTOS.toFixed(2)}</td>
-                            <td><strong>S/ ${total.toFixed(2)}</strong></td>
-                        </tr>
-                    `;
-                }
+            // Si es número, ordenar numéricamente
+            if (typeof valA === 'number') {
+                return direction === 'asc' ? valA - valB : valB - valA;
             }
-            
-            html += `</tbody></table>`;
-            document.getElementById('tableWrapper').innerHTML = html;
+            // Si es texto, ordenar alfabéticamente
+            return direction === 'asc' 
+                ? String(valA).localeCompare(String(valB))
+                : String(valB).localeCompare(String(valA));
+        });
+    }
+    
+    // Función para renderizar la tabla
+    function renderizarTabla() {
+        let html = `
+            <style>
+                .sortable-header {
+                    cursor: pointer;
+                    user-select: none;
+                    position: relative;
+                    padding-right: 20px;
+                }
+                .sortable-header:hover {
+                    background-color: #3d8a57;
+                }
+                .sortable-header::after {
+                    content: '⇅';
+                    position: absolute;
+                    right: 5px;
+                    opacity: 0.5;
+                    font-size: 10px;
+                }
+                .sortable-header.asc::after {
+                    content: '↑';
+                    opacity: 1;
+                }
+                .sortable-header.desc::after {
+                    content: '↓';
+                    opacity: 1;
+                }
+            </style>
+            <div style="margin-bottom: 10px; font-size: 12px; color: #666;">
+                🔍 Click en los encabezados para ordenar
+            </div>
+            <table id="sortableTable" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #4eac6d; color: white;">
+                        <th class="sortable-header" data-column="fecha" style="padding: 8px; border: 1px solid #ddd;">📅 Fecha</th>
+                        <th class="sortable-header" data-column="archivo" style="padding: 8px; border: 1px solid #ddd;">📄 Archivo</th>
+                        <th class="sortable-header" data-column="empresa" style="padding: 8px; border: 1px solid #ddd;">🏢 Empresa</th>
+                        <th class="sortable-header" data-column="contado" style="padding: 8px; border: 1px solid #ddd;">💰 Contado</th>
+                        <th class="sortable-header" data-column="credito" style="padding: 8px; border: 1px solid #ddd;">📝 Crédito</th>
+                        <th class="sortable-header" data-column="transferencia" style="padding: 8px; border: 1px solid #ddd;">💳 Transferencia</th>
+                        <th class="sortable-header" data-column="cancelacionContado" style="padding: 8px; border: 1px solid #ddd;">🔄 Cancelación Contado</th>
+                        <th class="sortable-header" data-column="cancelacionTransferencia" style="padding: 8px; border: 1px solid #ddd;">🔄 Cancelación Transferencia</th>
+                        <th class="sortable-header" data-column="gastos" style="padding: 8px; border: 1px solid #ddd;">💸 Gastos</th>
+                        <th class="sortable-header" data-column="total" style="padding: 8px; border: 1px solid #ddd;">📊 Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        for (const row of datosTabla) {
+            html += `
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${row.fecha}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${row.archivo}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${row.empresa}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">S/ ${row.contado.toFixed(2)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">S/ ${row.credito.toFixed(2)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">S/ ${row.transferencia.toFixed(2)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">S/ ${row.cancelacionContado.toFixed(2)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">S/ ${row.cancelacionTransferencia.toFixed(2)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">S/ ${row.gastos.toFixed(2)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;"><strong>S/ ${row.total.toFixed(2)}</strong></td>
+                </tr>
+            `;
         }
         
+        html += `</tbody></table>`;
+        document.getElementById('tableWrapper').innerHTML = html;
+        
+        // Agregar eventos de click a los encabezados
+        document.querySelectorAll('.sortable-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const column = header.getAttribute('data-column');
+                
+                // Cambiar dirección si es la misma columna
+                if (sortColumn === column) {
+                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortColumn = column;
+                    sortDirection = 'asc';
+                }
+                
+                // Actualizar clases CSS
+                document.querySelectorAll('.sortable-header').forEach(th => {
+                    th.classList.remove('asc', 'desc');
+                });
+                header.classList.add(sortDirection);
+                
+                // Ordenar y renderizar
+                ordenarDatos(sortColumn, sortDirection);
+                renderizarTabla();
+            });
+        });
+    }
+    
+    // Ordenar inicialmente por fecha ascendente
+    ordenarDatos('fecha', 'asc');
+    renderizarTabla();
+}
+        
+
+
+
         // ==================== EXPORTAR CSV ====================
         exportBtn.addEventListener('click', () => {
             if (datosAnalizados.length === 0) {
@@ -1015,7 +1119,39 @@
             fileInput.value = '';
             alert('✅ Todo limpiado');
         });
-        
+
+        // ==================== CAPTURAR TODO COMO IMAGEN ====================
+        document.getElementById('exportFullImageBtn').addEventListener('click', async () => {
+            if (datosAnalizados.length === 0) {
+                alert('No hay datos para capturar.');
+                return;
+            }
+            
+            // Ocultar botones temporalmente
+            const btns = document.querySelectorAll('.controls button');
+            btns.forEach(btn => btn.style.display = 'none');
+            
+            const element = document.querySelector('.content');
+            
+            try {
+                const canvas = await html2canvas(element, {
+                    scale: 2,
+                    backgroundColor: 'white',
+                    logging: false
+                });
+                
+                const link = document.createElement('a');
+                link.download = `reporte_completo_${new Date().toISOString().split('T')[0]}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                console.error('Error al capturar:', error);
+                alert('Error al capturar la imagen');
+            }
+            
+            btns.forEach(btn => btn.style.display = '');
+        });
+
         // Inicializar
         setTimeout(setupChartButtons, 500);
         console.log('✅ Analizador listo. Arrastra tus archivos Excel.');
