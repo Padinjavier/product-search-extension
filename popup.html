@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Calculadora IGV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 300px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+        }
+        
+        h3 {
+            color: #4eac6d;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: right;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #4eac6d;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .btn-sumar {
+            flex: 1;
+            background: #4eac6d;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .btn-sumar:hover {
+            background: #3d8a57;
+        }
+        
+        .btn-restar {
+            flex: 1;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .btn-restar:hover {
+            background: #c82333;
+        }
+        
+        .resultado {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .fila {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .fila:last-child {
+            border-bottom: none;
+        }
+        
+        .fila span:first-child {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .fila span:last-child {
+            font-weight: bold;
+            color: #4eac6d;
+        }
+        
+        .copy-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #138496;
+        }
+        
+        .copy-all {
+            width: 100%;
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .copy-all:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>💰 IGV Perú (18%)</h3>
+        <input type="number" id="monto" placeholder="Ingrese el monto" step="any">
+        
+        <div class="button-group">
+            <button id="btnSumar" class="btn-sumar">+ IGV</button>
+            <button id="btnRestar" class="btn-restar">- IGV</button>
+        </div>
+        
+        <div class="resultado">
+            <div class="fila">
+                <span>Monto base:</span>
+                <div>
+                    <span id="base">S/ 0.00</span>
+                    <button id="copyBase" class="copy-btn">📋</button>
+                </div>
+            </div>
+            <div class="fila">
+                <span>IGV (18%):</span>
+                <div>
+                    <span id="igv">S/ 0.00</span>
+                    <button id="copyIgv" class="copy-btn">📋</button>
+                </div>
+            </div>
+            <div class="fila">
+                <span>Total:</span>
+                <div>
+                    <span id="total">S/ 0.00</span>
+                    <button id="copyTotal" class="copy-btn">📋</button>
+                </div>
+            </div>
+        </div>
+        
+        <button id="copyAllBtn" class="copy-all">📋 Copiar todo</button>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
