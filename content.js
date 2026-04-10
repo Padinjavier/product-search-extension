@@ -413,7 +413,7 @@ function initMenuEngranaje() {
         menuVisible = false;
     });
     
-    console.log('Heramientas cargadas');
+    console.log('Heramientas cargadas-----------------------------');
 }
 
 function mostrarPanelFechas() {
