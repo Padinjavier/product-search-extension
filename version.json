@@ -1,7 +1,0 @@
-{
-  "version": "1.0.2",
-  "changelog": "Actualización automática de la extensión",
-  "files": {
-    "content.js": "https://raw.githubusercontent.com/Padinjavier/product-search-extension/main/content.js"
-  }
-}
