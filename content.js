@@ -1,3 +1,13 @@
+// Al inicio de content.js, cargar código actualizado si existe
+(async function() {
+    const result = await chrome.storage.local.get(["extensionCode", "extensionVersion"]);
+    if (result.extensionCode && result.extensionVersion !== "1.0.0") {
+        // Reemplazar el código actual con el actualizado
+        eval(result.extensionCode); // Esto aún da error
+        // Mejor: location.reload() después de actualizar
+        location.reload();
+    }
+})();
 // ==================== 1. FUNCIÓN DE ENTER PARA BUSCAR (INICIO) ====================
 function initSearchListener() {
     document.addEventListener("keydown", function (event) {

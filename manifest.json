@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Product Search Enter",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Busca productos al presionar Enter - Auto actualizable",
-  "permissions": ["storage"],
+  "permissions": ["storage", "scripting"],
   "host_permissions": [
     "https://businessmanagementweb.herokuapp.com/*",
     "https://raw.githubusercontent.com/*"
@@ -14,7 +14,7 @@
   "content_scripts": [
     {
       "matches": ["https://businessmanagementweb.herokuapp.com/*"],
-      "js": ["updater.js", "content.js"],
+      "js": ["content.js"],
       "run_at": "document_end"
     }
   ],
