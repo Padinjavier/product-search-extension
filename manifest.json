@@ -1,23 +1,26 @@
 {
   "manifest_version": 3,
   "name": "Product Search Enter",
-  "version": "1.0",
-  "description": "Busca productos al presionar Enter",
-  "permissions": [],
+  "version": "1.0.0",
+  "description": "Busca productos al presionar Enter - Auto actualizable",
+  "permissions": ["storage"],
   "host_permissions": [
-    "https://businessmanagementweb.herokuapp.com/*"
+    "https://businessmanagementweb.herokuapp.com/*",
+    "https://raw.githubusercontent.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": [
-        "https://businessmanagementweb.herokuapp.com/*"
-      ],
-      "js": ["content.js"]
+      "matches": ["https://businessmanagementweb.herokuapp.com/*"],
+      "js": ["updater.js", "content.js"],
+      "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["analyze.html"],
+      "resources": ["index.html"],
       "matches": ["<all_urls>"]
     }
   ]
